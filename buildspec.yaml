@@ -4,33 +4,47 @@ env:
   variables:
     ACCOUNT_ID: "600960866686"
     REGION: "us-east-1"
+    # ⚠️ Make REPO_NAME match your ECR repo EXACTLY.
+    # If your ECR repo is "massgis/agentcore-chat-runtime", set it that way.
     REPO_NAME: "massgis/agentcore-chat-runtime"
     IMAGE_TAG: "latest"
+    DOCKER_BUILDKIT: "1"
 
 phases:
   pre_build:
     commands:
-      - |
-        echo "Logging in to Amazon ECR in $REGION..."
-        aws --region "$REGION" ecr get-login-password | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
-        REPO_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME"
-        echo "Repo URI: $REPO_URI"
+      - set -euo pipefail
+      - echo "Listing source root (should contain Dockerfile and app.py):"
+      - ls -la
+      - echo "Previewing Dockerfile (if missing, the build will fail):"
+      - (test -f Dockerfile && sed -n '1,120p' Dockerfile) || (echo "ERROR: Dockerfile not found at repo root" && exit 1)
+      - echo "Ensuring ECR repo exists: $REPO_NAME"
+      - aws --region "$REGION" ecr describe-repositories --repository-names "$REPO_NAME" >/dev/null 2>&1 || aws --region "$REGION" ecr create-repository --repository-name "$REPO_NAME" >/dev/null
+      - echo "Logging in to Amazon ECR in $REGION..."
+      - aws --region "$REGION" ecr get-login-password | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
+      - REPO_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME"
+      - echo "Repo URI: $REPO_URI"
+
   build:
     commands:
-      - |
-        echo "Building image..."
-        docker build -t "$REPO_NAME" .
-        docker tag "$REPO_NAME:latest" "$REPO_URI:$IMAGE_TAG"
+      - set -euo pipefail
+      - echo "Building image with Dockerfile at repo root..."
+      - docker build --progress=plain -t "$REPO_NAME" .
+      - echo "Tagging image as $REPO_URI:$IMAGE_TAG"
+      - docker tag "$REPO_NAME:latest" "$REPO_URI:$IMAGE_TAG"
+      - echo "Listing local images (sanity check):"
+      - docker images | head -n 20
+
   post_build:
     commands:
-      - |
-        echo "Pushing image to ECR..."
-        docker push "$REPO_URI:$IMAGE_TAG"
-        printf '[{"name":"agent","imageUri":"%s"}]' "$REPO_URI:$IMAGE_TAG" > imagedefinitions.json
+      - set -euo pipefail
+      - echo "Pushing image to ECR $REPO_URI:$IMAGE_TAG ..."
+      - docker push "$REPO_URI:$IMAGE_TAG"
+      - echo "Verifying image in ECR..."
+      - aws --region "$REGION" ecr describe-images --repository-name "$REPO_NAME" --image-ids imageTag="$IMAGE_TAG"
+      - printf '[{"name":"agent","imageUri":"%s"}]' "$REPO_URI:$IMAGE_TAG" > imagedefinitions.json
+      - echo "Done. Image should now be visible in ECR → $REPO_NAME → tag: $IMAGE_TAG"
 
 artifacts:
   files:
     - imagedefinitions.json
-
-
-
