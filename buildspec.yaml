@@ -4,7 +4,7 @@ env:
   variables:
     ACCOUNT_ID: "600960866686"
     REGION: "us-east-1"
-    # 👇 EXACT ECR repo name (use nested path here if your repo is massgis/agentcore-chat-runtime)
+    # 👇 EXACT ECR repo name. If your repo is nested (e.g., massgis/agentcore-chat-runtime), put the full path here.
     REPO_NAME: "agentcore-chat-runtime"
     IMAGE_TAG: "latest"
     DOCKER_BUILDKIT: "1"
@@ -12,7 +12,7 @@ env:
 phases:
   pre_build:
     commands:
-      - 'set -euo pipefail'
+      - 'set -eu'
       - 'echo "Listing source root (should contain Dockerfile and app.py):"'
       - 'ls -la'
       - 'test -f Dockerfile || (echo "ERROR: Dockerfile not found at repo root" && exit 1)'
@@ -24,7 +24,8 @@ phases:
 
   build:
     commands:
-      - 'echo "Building image with Dockerfile at repo root..."'
+      - 'set -eu'
+      - 'echo "Building image with Dockerfile at repo root...""'
       - 'docker build --progress=plain -t "$REPO_NAME" .'
       - 'echo "Tagging image as $REPO_URI:$IMAGE_TAG"'
       - 'docker tag "$REPO_NAME:latest" "$REPO_URI:$IMAGE_TAG"'
@@ -33,7 +34,7 @@ phases:
 
   post_build:
     commands:
-      - 'set -euo pipefail'
+      - 'set -eu'
       - 'echo "Pushing image to ECR $REPO_URI:$IMAGE_TAG ..."'
       - 'docker push "$REPO_URI:$IMAGE_TAG"'
       - 'echo "Verifying image in ECR..."'
