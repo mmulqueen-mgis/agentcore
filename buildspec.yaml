@@ -5,7 +5,7 @@ env:
     ACCOUNT_ID: "600960866686"
     REGION: "us-east-1"
     # 👇 EXACT ECR repo name. If your repo is nested (e.g., massgis/agentcore-chat-runtime), put the full path here.
-    REPO_NAME: "agentcore-chat-runtime"
+    REPO_NAME: "massgis/agentcore-chat-runtime"
     IMAGE_TAG: "latest"
     DOCKER_BUILDKIT: "1"
 
@@ -45,5 +45,6 @@ phases:
 artifacts:
   files:
     - imagedefinitions.json
+
 
 
