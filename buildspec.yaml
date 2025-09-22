@@ -8,17 +8,35 @@ env:
     IMAGE_TAG: "latest"
 
 phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - 'echo "Docker version:"'
+      - 'docker --version'
+
   pre_build:
     commands:
+      - 'echo "Ensuring ECR repo exists: $REPO_NAME"'
       - 'aws --region "$REGION" ecr describe-repositories --repository-names "$REPO_NAME" >/dev/null 2>&1 || aws --region "$REGION" ecr create-repository --repository-name "$REPO_NAME"'
+      - 'echo "Logging in to Amazon ECR..."'
       - 'aws --region "$REGION" ecr get-login-password | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"'
-      - 'echo "Repo: $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG"'
+      - 'export REPO_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME"; echo "Repo URI: $REPO_URI"'
+      - 'echo "Checking for Dockerfile at repo root..."'
+      - 'test -f Dockerfile || (echo "ERROR: Dockerfile not found at project root." && exit 1)'
+
   build:
     commands:
+      - 'echo "Building image..."'
       - 'docker build -t "$REPO_NAME:latest" .'
-      - 'docker tag "$REPO_NAME:latest" "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG"'
+      - 'echo "Tagging image as $REPO_URI:$IMAGE_TAG"'
+      - 'docker tag "$REPO_NAME:latest" "$REPO_URI:$IMAGE_TAG"'
+
   post_build:
     commands:
-      - 'docker push "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME:$IMAGE_TAG"'
+      - 'echo "Pushing image to ECR..."'
+      - 'docker push "$REPO_URI:$IMAGE_TAG"'
+      - 'echo "Verifying image tag in ECR..."'
+      - 'aws --region "$REGION" ecr describe-images --repository-name "$REPO_NAME" --image-ids imageTag="$IMAGE_TAG"'
 
 
