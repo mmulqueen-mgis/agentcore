@@ -2,7 +2,6 @@ version: 0.2
 
 env:
   variables:
-    # 👇 set these to your values (or use CodeBuild "Environment variables")
     ACCOUNT_ID: "600960866686"
     REGION: "us-east-1"
     REPO_NAME: "agentcore-chat-runtime"
@@ -11,21 +10,26 @@ env:
 phases:
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR in $REGION..."
-      - aws --region $REGION ecr get-login-password | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com
-      - REPO_URI=$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME
-      - echo "Repo URI: $REPO_URI"
+      - |
+        echo "Logging in to Amazon ECR in $REGION..."
+        aws --region "$REGION" ecr get-login-password | docker login --username AWS --password-stdin "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
+        REPO_URI="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$REPO_NAME"
+        echo "Repo URI: $REPO_URI"
   build:
     commands:
-      - echo "Building image..."
-      - docker build -t $REPO_NAME .
-      - docker tag $REPO_NAME:latest $REPO_URI:$IMAGE_TAG
+      - |
+        echo "Building image..."
+        docker build -t "$REPO_NAME" .
+        docker tag "$REPO_NAME:latest" "$REPO_URI:$IMAGE_TAG"
   post_build:
     commands:
-      - echo "Pushing image to ECR..."
-      - docker push $REPO_URI:$IMAGE_TAG
-      - printf '[{"name":"agent","imageUri":"%s"}]' "$REPO_URI:$IMAGE_TAG" > imagedefinitions.json
+      - |
+        echo "Pushing image to ECR..."
+        docker push "$REPO_URI:$IMAGE_TAG"
+        printf '[{"name":"agent","imageUri":"%s"}]' "$REPO_URI:$IMAGE_TAG" > imagedefinitions.json
+
 artifacts:
   files:
     - imagedefinitions.json
+
 
