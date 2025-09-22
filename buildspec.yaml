@@ -9,11 +9,9 @@ env:
 
 phases:
   install:
-    runtime-versions:
-      docker: 20
     commands:
-      - 'echo "Docker version:"'
-      - 'docker --version'
+      - 'echo "Checking Docker availability (requires Privileged=true)..."'
+      - 'docker --version || (echo "ERROR: docker not found. Ensure CodeBuild Privileged mode is ON." && exit 1)'
 
   pre_build:
     commands:
