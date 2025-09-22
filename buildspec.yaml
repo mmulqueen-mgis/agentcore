@@ -3,7 +3,7 @@ version: 0.2
 env:
   variables:
     # 👇 set these to your values (or use CodeBuild "Environment variables")
-    ACCOUNT_ID: "123456789012"
+    ACCOUNT_ID: "600960866686"
     REGION: "us-east-1"
     REPO_NAME: "agentcore-chat-runtime"
     IMAGE_TAG: "latest"
@@ -28,3 +28,4 @@ phases:
 artifacts:
   files:
     - imagedefinitions.json
+
